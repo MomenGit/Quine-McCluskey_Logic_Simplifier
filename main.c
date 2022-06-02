@@ -153,9 +153,9 @@ TruthTable set_truth_table(char *exp_type)
         }
         truth_table = (TruthTable){table_terms, gray_code(), min_terms_indices, min_terms_count, max_terms_indices, max_terms_count};
         table_print(truth_table);
-        printf("Are you okay with the previous table?\nEnter 1=>for yes || 0=>for no\n");
+        printf("Proceed with this table? (enter the proper number)\n1:Yes 0:No\n");
         scanf("%d", &output);
-    } while (!output);
+    } while (output == 0);
     return truth_table;
 }
 short check_output(TruthTable truth_table)
@@ -475,11 +475,16 @@ void QuineMcClusky_method(TruthTable truth_table, char exp_type)
     prime_imps = set_prime_implicants(grouped_terms, &prime_imps, n_groups, n_mins_in_g, &prime_count);
     es_prime_imps = get_essential_prime_implicants(prime_imps, truth_table, prime_count, &es_prime_count, exp_type);
     printf("\n");
+    if (exp_type == '1')
+        printf("%s", "The SOP expression: ");
+    else if (exp_type == '0')
+        printf("%s", "The POS expression: ");
+
     for (short i = 0; i < es_prime_count; i++)
     {
         alphabit_term_print(es_prime_imps[i].term, exp_type);
-        if (exp_type == '1')
-            printf("%c", (i != es_prime_count - 1) ? '+' : '\n');
+        if (exp_type == '1' && (i != es_prime_count - 1))
+            printf("%c", '+');
     }
     printf("\n");
 }
