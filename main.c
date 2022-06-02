@@ -345,7 +345,6 @@ Implicant *set_prime_implicants(Implicant **last_level, Implicant **prime_implic
                         }
                         new_level[groups_count - 1][n_in_groups[groups_count - 1] - 1].term = malloc(g_n_bits);
                         new_level[groups_count - 1][n_in_groups[groups_count - 1] - 1].term = new_term;
-                        print_imp(new_level[groups_count - 1][n_in_groups[groups_count - 1] - 1]);
                     }
                     else
                         free(new_term);
@@ -362,9 +361,6 @@ Implicant *set_prime_implicants(Implicant **last_level, Implicant **prime_implic
                 {
                     prime_implicants[0] = (Implicant *)realloc(prime_implicants[0], sizeof(Implicant) * ++*prime_count);
                     prime_implicants[0][*prime_count - 1] = set_implicant(last_level[i][j].min_terms_indices, last_level[i][j].term, last_level[i][j].length);
-                    printf("This is a prime Implicant:______\n");
-                    print_imp(prime_implicants[0][*prime_count - 1]);
-                    printf("\n");
                 }
             }
         }
