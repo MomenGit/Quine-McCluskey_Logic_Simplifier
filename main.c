@@ -13,7 +13,7 @@ typedef struct
 } Term;
 typedef struct
 {
-    short *min_terms_indices;
+    short *terms_indices;
     char *term;
     short length;
 } Implicant;
@@ -23,40 +23,45 @@ typedef struct
     short *gray_code;
     short *min_terms_indices;
     short min_terms_count;
+    short *max_terms_indices;
+    short max_terms_count;
 } TruthTable;
 
-short *gray_code();           // tick
-char *generate_bits(short);   // tick
-TruthTable set_truth_table(); // tick
+short *gray_code();                 // tick
+char *generate_bits(short);         // tick
+TruthTable set_truth_table(char *); // tick
 short check_output(TruthTable);
-Implicant **group_min_terms(TruthTable, short *, short **); // tick
-Term set_term(char *, short, char);                         // tick
-Implicant set_implicant_from_tt(Term *, char *, short);     // tick
+Implicant **group_terms(TruthTable, short *, short **, char); // tick
+Term set_term(char *, short, char);                           // tick
+Implicant set_implicant_from_tt(Term *, char *, short);       // tick
 Implicant set_implicant(short *, char *, short);
 Implicant *set_prime_implicants(Implicant **, Implicant **, short, short *, short *);
-Implicant *get_essential_prime_implicants(Implicant *, TruthTable, short, short *);
-void QuineMcClusky_method(TruthTable);
+Implicant *get_essential_prime_implicants(Implicant *, TruthTable, short, short *, char);
+void QuineMcClusky_method(TruthTable, char);
 short compare_bits(char *, char *); // tick
 void set_n_bits();                  // tick
 void table_print(TruthTable);       // tick
 void k_map_print(TruthTable);       // tick
 short count_ones(char *);           // tick
-void alphabit_term_print(char *);
+void alphabit_term_print(char *, char);
 void print_imp(Implicant imp);
 static short g_n_bits = 0, g_n_combos = 0;
 
 void main()
 {
     TruthTable truth_table;
+    char exp_type;
     set_n_bits();
-    truth_table = set_truth_table();
+    truth_table = set_truth_table(&exp_type);
     if (check_output(truth_table))
     {
         k_map_print(truth_table);
-        QuineMcClusky_method(truth_table);
+        if (exp_type == '1' || exp_type == '2')
+            QuineMcClusky_method(truth_table, '1');
+        if (exp_type == '0' || exp_type == '2')
+            QuineMcClusky_method(truth_table, '0');
     }
 }
-
 short *gray_code()
 {
     short *code = (short *)calloc(g_n_combos, sizeof(short));
@@ -89,15 +94,41 @@ void set_n_bits()
     g_n_combos = powf(2, g_n_bits);
 }
 /* Sets the truth table and its outputs */
-TruthTable set_truth_table()
+TruthTable set_truth_table(char *exp_type)
 {
     TruthTable truth_table;
     Term *table_terms = (Term *)calloc(g_n_combos, sizeof(Term));
     char *bits;
-    short output, *min_term_indices = (short *)malloc(sizeof(short));
+    short output, *min_terms_indices, *max_terms_indices;
+
     do
     {
-        int min_terms_count = 0;
+        printf("Enter the proper nubmer to choose the type of expression:\n0:POS 1:SOP 2:Both\n");
+        scanf("%d", &output);
+        switch (output)
+        {
+        case 0:
+            *exp_type = '0';
+            break;
+        case 1:
+            *exp_type = '1';
+            break;
+        case 2:
+            *exp_type = '2';
+            break;
+        default:
+            break;
+        }
+    } while (output < 0 && output > 2);
+
+    if (*exp_type == '1' || *exp_type == '2')
+        min_terms_indices = (short *)malloc(sizeof(short));
+    if (*exp_type == '0' || *exp_type == '2')
+        max_terms_indices = (short *)malloc(sizeof(short));
+
+    do
+    {
+        int min_terms_count = 0, max_terms_count = 0;
         printf("Enter the outputs of the truth table:\n");
         for (short i = 0; i < g_n_bits; i++)
             printf("%c", 'A' + i);
@@ -109,14 +140,18 @@ TruthTable set_truth_table()
             printf("%s: ", bits);
             scanf("%d", &output);
             table_terms[i] = set_term(bits, i, (output) ? '1' : '0');
-            if (output)
+            if (output && (*exp_type == '1' || *exp_type == '2'))
             {
-                min_term_indices = (short *)realloc(min_term_indices, sizeof(short) * (min_terms_count + 1));
-                min_term_indices[min_terms_count] = i;
-                min_terms_count += 1;
+                min_terms_indices = (short *)realloc(min_terms_indices, sizeof(short) * ++min_terms_count);
+                min_terms_indices[min_terms_count - 1] = i;
+            }
+            else if (!output && (*exp_type == '0' || *exp_type == '2'))
+            {
+                max_terms_indices = (short *)realloc(max_terms_indices, sizeof(short) * ++max_terms_count);
+                max_terms_indices[max_terms_count - 1] = i;
             }
         }
-        truth_table = (TruthTable){table_terms, gray_code(), min_term_indices, (short)min_terms_count};
+        truth_table = (TruthTable){table_terms, gray_code(), min_terms_indices, min_terms_count, max_terms_indices, max_terms_count};
         table_print(truth_table);
         printf("Are you okay with the previous table?\nEnter 1=>for yes || 0=>for no\n");
         scanf("%d", &output);
@@ -240,42 +275,53 @@ char *set_matched_bit(char *str, short index)
 // Sets the implicant
 Implicant set_implicant_from_tt(Term *terms, char *term, short length)
 {
-    short *min_terms_indices = (short *)calloc(length, sizeof(short));
+    short *indices = (short *)calloc(length, sizeof(short));
     for (short i = 0; i < length; i++)
-        min_terms_indices[i] = (terms[i]).index;
-    return (Implicant){min_terms_indices, term, length};
+        indices[i] = terms[i].index;
+    return (Implicant){indices, term, length};
 }
 // Sets the implicant
-Implicant set_implicant(short *min_terms, char *term, short length)
+Implicant set_implicant(short *terms_indices, char *term, short length)
 {
-    short *min_terms_indices = (short *)calloc(length, sizeof(short));
+    short *indices = (short *)calloc(length, sizeof(short));
     for (short i = 0; i < length; i++)
-        min_terms_indices[i] = min_terms[i];
-    return (Implicant){min_terms_indices, term, length};
+        indices[i] = terms_indices[i];
+    return (Implicant){indices, term, length};
 }
 // Group the min terms into groups of implicants according to number of ones
-Implicant **group_min_terms(TruthTable truth_table, short *n_groups, short **n_implicants_in_group)
+Implicant **group_terms(TruthTable truth_table, short *n_groups, short **n_imps_in_group, char exp_type)
 {
-    Implicant **min_groups = (Implicant **)malloc(sizeof(Implicant *));
-    *n_implicants_in_group = (short *)malloc(sizeof(short));
-    short k = 0, n_ones, last_n_ones = -1, group_i;
+    Implicant **groups = (Implicant **)malloc(sizeof(Implicant *));
+    *n_imps_in_group = (short *)malloc(sizeof(short));
+    short k = 0, n_ones, last_n_ones = -1, group_i, count, *indices;
     *n_groups = 0;
-    for (short i = 0; i < truth_table.min_terms_count; i++)
+    if (exp_type == '1')
     {
-        n_ones = count_ones((truth_table.terms[truth_table.min_terms_indices[i]]).term);
+        count = truth_table.min_terms_count;
+        indices = truth_table.min_terms_indices;
+    }
+    else if (exp_type == '0')
+    {
+        count = truth_table.max_terms_count;
+        indices = truth_table.max_terms_indices;
+    }
+
+    for (short i = 0; i < count; i++)
+    {
+        n_ones = count_ones((truth_table.terms[indices[i]]).term);
         if (last_n_ones < n_ones)
         {
-            min_groups = (Implicant **)realloc(min_groups, sizeof(Implicant *) * ++*n_groups);
-            *n_implicants_in_group = (short *)realloc(*n_implicants_in_group, sizeof(short) * *n_groups);
-            n_implicants_in_group[0][*n_groups - 1] = 0;
-            min_groups[*n_groups - 1] = (Implicant *)malloc(sizeof(Implicant));
+            groups = (Implicant **)realloc(groups, sizeof(Implicant *) * ++*n_groups);
+            *n_imps_in_group = (short *)realloc(*n_imps_in_group, sizeof(short) * *n_groups);
+            n_imps_in_group[0][*n_groups - 1] = 0;
+            groups[*n_groups - 1] = (Implicant *)malloc(sizeof(Implicant));
             last_n_ones = n_ones;
         }
         group_i = *n_groups - 1 - last_n_ones + n_ones;
-        min_groups[group_i] = (Implicant *)realloc(min_groups[group_i], sizeof(Implicant) * ++n_implicants_in_group[0][group_i]);
-        min_groups[group_i][n_implicants_in_group[0][group_i] - 1] = set_implicant_from_tt(&truth_table.terms[truth_table.min_terms_indices[i]], truth_table.terms[truth_table.min_terms_indices[i]].term, 1);
+        groups[group_i] = (Implicant *)realloc(groups[group_i], sizeof(Implicant) * ++n_imps_in_group[0][group_i]);
+        groups[group_i][n_imps_in_group[0][group_i] - 1] = set_implicant_from_tt(&truth_table.terms[indices[i]], truth_table.terms[indices[i]].term, 1);
     }
-    return min_groups;
+    return groups;
 }
 // Count the ones in a term
 short count_ones(char *bits)
@@ -287,7 +333,7 @@ short count_ones(char *bits)
     return n_ones;
 }
 //
-Implicant *set_prime_implicants(Implicant **last_level, Implicant **prime_implicants, short n_group, short *n_implicants_in_g, short *prime_count)
+Implicant *set_prime_implicants(Implicant **last_level, Implicant **prime_implicants, short n_group, short *n_imps_in_g, short *prime_count)
 {
     Implicant **new_level = (Implicant **)malloc(sizeof(Implicant *));
     short is_bit_diff, comparison, groups_count = 0, last = -1, *n_in_groups = (short *)malloc(sizeof(short)), matched_count = 0;
@@ -301,18 +347,18 @@ Implicant *set_prime_implicants(Implicant **last_level, Implicant **prime_implic
             q = i - 1;
         }
         // loops over imps of each group
-        for (short j = 0; j < n_implicants_in_g[i]; j++)
+        for (short j = 0; j < n_imps_in_g[i]; j++)
         {
             is_bit_diff = 0;
             // loops over the next imps of the next group
-            for (short k = 0, x = 1; k < n_implicants_in_g[q]; k++, x = 1)
+            for (short k = 0, x = 1; k < n_imps_in_g[q]; k++, x = 1)
             {
                 comparison = compare_bits(last_level[i][j].term, last_level[q][k].term);
                 if (comparison >= 0 && i < n_group - 1)
                 {
                     checked_imps = (short **)realloc(checked_imps, sizeof(short *) * (matched_count += 2));
-                    checked_imps[matched_count - 2] = last_level[i][j].min_terms_indices;
-                    checked_imps[matched_count - 1] = last_level[q][k].min_terms_indices;
+                    checked_imps[matched_count - 2] = last_level[i][j].terms_indices;
+                    checked_imps[matched_count - 1] = last_level[q][k].terms_indices;
                     new_term = (char *)malloc(g_n_bits);
                     new_term = set_matched_bit(strcpy(new_term, last_level[i][j].term), comparison);
                     for (short m = 0; m < n_in_groups[groups_count - 1]; m++)
@@ -333,14 +379,14 @@ Implicant *set_prime_implicants(Implicant **last_level, Implicant **prime_implic
                         is_bit_diff = 1;
                         new_level[groups_count - 1] = (Implicant *)realloc(new_level[groups_count - 1], sizeof(Implicant) * ++n_in_groups[groups_count - 1]);
                         new_level[groups_count - 1][n_in_groups[groups_count - 1] - 1].length = 0;
-                        new_level[groups_count - 1][n_in_groups[groups_count - 1] - 1].min_terms_indices = (short *)malloc(sizeof(short));
+                        new_level[groups_count - 1][n_in_groups[groups_count - 1] - 1].terms_indices = (short *)malloc(sizeof(short));
 
                         for (short x = 0; x < 2; x++)
                         {
                             for (short y = 0; y < last_level[i + x][(x) ? k : j].length; y++)
                             {
-                                new_level[groups_count - 1][n_in_groups[groups_count - 1] - 1].min_terms_indices = (short *)realloc(new_level[groups_count - 1][n_in_groups[groups_count - 1] - 1].min_terms_indices, sizeof(short) * ++(new_level[groups_count - 1][n_in_groups[groups_count - 1] - 1].length));
-                                new_level[groups_count - 1][n_in_groups[groups_count - 1] - 1].min_terms_indices[new_level[groups_count - 1][n_in_groups[groups_count - 1] - 1].length - 1] = last_level[i + x][(x) ? k : j].min_terms_indices[y];
+                                new_level[groups_count - 1][n_in_groups[groups_count - 1] - 1].terms_indices = (short *)realloc(new_level[groups_count - 1][n_in_groups[groups_count - 1] - 1].terms_indices, sizeof(short) * ++(new_level[groups_count - 1][n_in_groups[groups_count - 1] - 1].length));
+                                new_level[groups_count - 1][n_in_groups[groups_count - 1] - 1].terms_indices[new_level[groups_count - 1][n_in_groups[groups_count - 1] - 1].length - 1] = last_level[i + x][(x) ? k : j].terms_indices[y];
                             }
                         }
                         new_level[groups_count - 1][n_in_groups[groups_count - 1] - 1].term = malloc(g_n_bits);
@@ -354,13 +400,13 @@ Implicant *set_prime_implicants(Implicant **last_level, Implicant **prime_implic
             {
                 for (short m = 0; m < matched_count; m++)
                 {
-                    if (checked_imps[m] == last_level[i][j].min_terms_indices)
+                    if (checked_imps[m] == last_level[i][j].terms_indices)
                         is_bit_diff = 1;
                 }
                 if (!is_bit_diff)
                 {
                     prime_implicants[0] = (Implicant *)realloc(prime_implicants[0], sizeof(Implicant) * ++*prime_count);
-                    prime_implicants[0][*prime_count - 1] = set_implicant(last_level[i][j].min_terms_indices, last_level[i][j].term, last_level[i][j].length);
+                    prime_implicants[0][*prime_count - 1] = set_implicant(last_level[i][j].terms_indices, last_level[i][j].term, last_level[i][j].length);
                 }
             }
         }
@@ -369,29 +415,40 @@ Implicant *set_prime_implicants(Implicant **last_level, Implicant **prime_implic
         set_prime_implicants(new_level, prime_implicants, groups_count, n_in_groups, prime_count);
     return *prime_implicants;
 }
-Implicant *get_essential_prime_implicants(Implicant *prime_imps, TruthTable truth_table, short prime_count, short *es_prime_count)
+Implicant *get_essential_prime_implicants(Implicant *prime_imps, TruthTable truth_table, short prime_count, short *es_prime_count, char exp_type)
 {
     Implicant *es_prime_implicants = (Implicant *)malloc(sizeof(Implicant));
+    short *indices, count;
     *es_prime_count = 0;
-    short min_term_occur[truth_table.min_terms_count];
-    for (short i = 0; i < truth_table.min_terms_count; i++)
-        min_term_occur[i] = 0;
+    if (exp_type == '1')
+    {
+        indices = truth_table.min_terms_indices;
+        count = truth_table.min_terms_count;
+    }
+    else if (exp_type == '0')
+    {
+        indices = truth_table.max_terms_indices;
+        count = truth_table.max_terms_count;
+    }
+    short terms_occur[count];
+    for (short i = 0; i < count; i++)
+        terms_occur[i] = 0;
 
-    for (short m = 0; m < truth_table.min_terms_count; m++)
+    for (short m = 0; m < count; m++)
         for (short i = 0; i < prime_count; i++)
             for (short j = 0; j < prime_imps[i].length; j++)
-                if (truth_table.min_terms_indices[m] == prime_imps[i].min_terms_indices[j])
-                    min_term_occur[m]++;
+                if (indices[m] == prime_imps[i].terms_indices[j])
+                    terms_occur[m]++;
 
-    for (short k = 0; k < truth_table.min_terms_count; k++)
+    for (short k = 0; k < count; k++)
     {
-        if (min_term_occur[k] == 1)
+        if (terms_occur[k] == 1)
         {
             for (short i = 0; i < prime_count; i++)
             {
                 for (short j = 0, x = 0; j < prime_imps[i].length; j++, x = 0)
                 {
-                    if (prime_imps[i].min_terms_indices[j] == truth_table.min_terms_indices[k])
+                    if (prime_imps[i].terms_indices[j] == indices[k])
                     {
                         for (short n = 0; n < *es_prime_count; n++)
                             if (es_prime_implicants[n].term == prime_imps[i].term)
@@ -399,7 +456,7 @@ Implicant *get_essential_prime_implicants(Implicant *prime_imps, TruthTable trut
                         if (x == 0)
                         {
                             es_prime_implicants = (Implicant *)realloc(es_prime_implicants, sizeof(Implicant) * ++*es_prime_count);
-                            es_prime_implicants[*es_prime_count - 1] = set_implicant(prime_imps[i].min_terms_indices, prime_imps[i].term, prime_imps[i].length);
+                            es_prime_implicants[*es_prime_count - 1] = set_implicant(prime_imps[i].terms_indices, prime_imps[i].term, prime_imps[i].length);
                             break;
                         }
                     }
@@ -409,34 +466,58 @@ Implicant *get_essential_prime_implicants(Implicant *prime_imps, TruthTable trut
     }
     return es_prime_implicants;
 }
-void QuineMcClusky_method(TruthTable truth_table)
+void QuineMcClusky_method(TruthTable truth_table, char exp_type)
 {
     short n_groups = 0, *n_mins_in_g, prime_count = 0, es_prime_count = 0;
-    Implicant **grouped_min_terms, *prime_imps, *es_prime_imps;
+    Implicant **grouped_terms, *prime_imps, *es_prime_imps;
     prime_imps = (Implicant *)malloc(sizeof(Implicant));
-    grouped_min_terms = group_min_terms(truth_table, &n_groups, &n_mins_in_g);
-    prime_imps = set_prime_implicants(grouped_min_terms, &prime_imps, n_groups, n_mins_in_g, &prime_count);
-    es_prime_imps = get_essential_prime_implicants(prime_imps, truth_table, prime_count, &es_prime_count);
+    grouped_terms = group_terms(truth_table, &n_groups, &n_mins_in_g, exp_type);
+    prime_imps = set_prime_implicants(grouped_terms, &prime_imps, n_groups, n_mins_in_g, &prime_count);
+    es_prime_imps = get_essential_prime_implicants(prime_imps, truth_table, prime_count, &es_prime_count, exp_type);
     printf("\n");
     for (short i = 0; i < es_prime_count; i++)
     {
-        alphabit_term_print(es_prime_imps[i].term);
-        printf("%c", (i != es_prime_count - 1) ? '+' : '\n');
+        alphabit_term_print(es_prime_imps[i].term, exp_type);
+        if (exp_type == '1')
+            printf("%c", (i != es_prime_count - 1) ? '+' : '\n');
     }
+    printf("\n");
 }
 void print_imp(Implicant imp)
 {
     printf("Implicant:\n%s\n", imp.term);
     for (short i = 0; i < imp.length; i++)
-        printf("%d ", imp.min_terms_indices[i]);
+        printf("%d ", imp.terms_indices[i]);
 
     printf("\n\n");
 }
-void alphabit_term_print(char *term)
+void alphabit_term_print(char *term, char exp_type)
 {
-    for (short i = 0; i < g_n_bits; i++)
-        if (term[i] == '1')
-            printf("%c", 'A' + i);
-        else if (term[i] == '0')
-            printf("%c`", 'A' + i);
+    if (exp_type == '1')
+    {
+        for (short i = 0; i < g_n_bits; i++)
+            if (term[i] == '1')
+                printf("%c", 'A' + i);
+            else if (term[i] == '0')
+                printf("%c`", 'A' + i);
+    }
+    else if (exp_type == '0')
+    {
+        printf("(");
+        for (short i = 0; i < g_n_bits; i++)
+        {
+            if (term[i] == '0')
+            {
+                printf("%c%c", 'A' + i);
+            }
+            else if (term[i] == '1')
+            {
+                printf("%c`%c", 'A' + i);
+            }
+            if (i != g_n_bits - 1 && term[i] != '_')
+                if (term[i + 1] != '_')
+                    printf("+");
+        }
+        printf(")");
+    }
 }
