@@ -84,7 +84,7 @@ void set_n_bits()
         printf("Enter number of bits: \n");
         scanf("%d", &g_n_bits);
         if (g_n_bits <= 1)
-            printf("Dude are you trolling am I gonna make an equation for %d bits? Please enter a proper number of bits.\n", g_n_bits);
+            printf("Please enter a proper number of bits which is greater than 1.\n", g_n_bits);
     } while (g_n_bits <= 1);
     g_n_combos = powf(2, g_n_bits);
 }
