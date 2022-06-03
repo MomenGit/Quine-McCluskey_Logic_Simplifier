@@ -22,8 +22,8 @@ typedef struct
     Term *terms;
     short *gray_code;
     short *min_terms_indices;
-    short min_terms_count;
     short *max_terms_indices;
+    short min_terms_count;
     short max_terms_count;
 } TruthTable;
 
@@ -154,7 +154,7 @@ TruthTable set_truth_table(char *exp_type)
                 max_terms_indices[max_terms_count - 1] = i;
             }
         }
-        truth_table = (TruthTable){table_terms, gray_code(), min_terms_indices, min_terms_count, max_terms_indices, max_terms_count};
+        truth_table = (TruthTable){table_terms, gray_code(), min_terms_indices, max_terms_indices, min_terms_count, max_terms_count};
         table_print(truth_table);
         printf("Proceed with this table? (enter the proper number)\n1:Yes 0:No\n");
         scanf("%d", &output);
