@@ -27,22 +27,22 @@ typedef struct
     short max_terms_count;
 } TruthTable;
 
-short *gray_code();                 // tick
-char *generate_bits(short);         // tick
-TruthTable set_truth_table(char *); // tick
+short *gray_code();
+char *generate_bits(short);
+TruthTable set_truth_table(char *);
 short check_output(TruthTable);
-Implicant **group_terms(TruthTable, short *, short **, char); // tick
-Term set_term(char *, short, char);                           // tick
-Implicant set_implicant_from_tt(Term *, char *, short);       // tick
+Implicant **group_terms(TruthTable, short *, short **, char);
+Term set_term(char *, short, char);
+Implicant set_implicant_from_tt(Term *, char *, short);
 Implicant set_implicant(short *, char *, short);
 Implicant *set_prime_implicants(Implicant **, Implicant **, short, short *, short *);
 Implicant *get_essential_prime_implicants(Implicant *, TruthTable, short, short *, char);
 void QuineMcClusky_method(TruthTable, char);
-short compare_bits(char *, char *); // tick
-void set_n_bits();                  // tick
-void table_print(TruthTable);       // tick
-void k_map_print(TruthTable);       // tick
-short count_ones(char *);           // tick
+short compare_bits(char *, char *);
+void set_n_bits();
+void table_print(TruthTable);
+void k_map_print(TruthTable);
+short count_ones(char *);
 void alphabit_term_print(char *, char);
 void print_imp(Implicant imp);
 static short g_n_bits = 0, g_n_combos = 0;
@@ -62,6 +62,7 @@ void main()
             QuineMcClusky_method(truth_table, '0');
     }
 }
+/* Generates an array of gray code pattern in decimal form */
 short *gray_code()
 {
     short *code = (short *)calloc(g_n_combos, sizeof(short));
@@ -71,6 +72,7 @@ short *gray_code()
     }
     return code;
 }
+/* Genereates a string representing the bits equivalent to certain decimal */
 char *generate_bits(short decimal)
 {
     char *bits = (char *)calloc(g_n_bits, 1);
@@ -81,6 +83,7 @@ char *generate_bits(short decimal)
     }
     return bits;
 }
+/* Sets the global variables of the number of bits and number of combinations according to the user's input */
 void set_n_bits()
 {
     printf("\t*Welcome to boolean function generator*\n\n");
@@ -158,6 +161,7 @@ TruthTable set_truth_table(char *exp_type)
     } while (output == 0);
     return truth_table;
 }
+/* Check that the outputs enetered by the user are not all ones or zeros */
 short check_output(TruthTable truth_table)
 {
     short ones = 1, zeros = 0;
@@ -181,7 +185,7 @@ short check_output(TruthTable truth_table)
     else
         return 1;
 }
-// Prints truth table
+/* Prints truth table */
 void table_print(TruthTable truth_table)
 {
     printf("\n");
@@ -194,7 +198,7 @@ void table_print(TruthTable truth_table)
     for (short i = 0; i < g_n_combos; i++)
         printf("%s | %c\n", (truth_table.terms[i]).term, (truth_table.terms[i]).output);
 }
-// Prints K-map
+/* Prints K-map */
 void k_map_print(TruthTable truth_table)
 {
 
@@ -240,14 +244,14 @@ void k_map_print(TruthTable truth_table)
         printf("\n");
     }
 }
-// Initalizes a term with its bits, order and output
+/* Initalizes a term with its bits, order and output */
 Term set_term(char *term, short index, char output)
 {
     Term main_term = {(char *)malloc(g_n_bits + 1), index, output};
     strcpy(main_term.term, term);
     return main_term;
 }
-// Returns the index of the one bit diff or -2 if both matches or -1 if totally different
+/* Returns the index of the one bit diff or -2 if both matches or -1 if totally different */
 short compare_bits(char *str1, char *str2)
 {
     short bit_diff_index, diffs = 0;
@@ -266,13 +270,13 @@ short compare_bits(char *str1, char *str2)
     else
         return -1;
 }
-// Sets the the matched bit to '-'
+/* Sets the the matched bit to '_' */
 char *set_matched_bit(char *str, short index)
 {
     str[index] = '_';
     return str;
 }
-// Sets the implicant
+/* Sets the implicant */
 Implicant set_implicant_from_tt(Term *terms, char *term, short length)
 {
     short *indices = (short *)calloc(length, sizeof(short));
@@ -280,7 +284,7 @@ Implicant set_implicant_from_tt(Term *terms, char *term, short length)
         indices[i] = terms[i].index;
     return (Implicant){indices, term, length};
 }
-// Sets the implicant
+/* Sets the implicant */
 Implicant set_implicant(short *terms_indices, char *term, short length)
 {
     short *indices = (short *)calloc(length, sizeof(short));
@@ -288,7 +292,7 @@ Implicant set_implicant(short *terms_indices, char *term, short length)
         indices[i] = terms_indices[i];
     return (Implicant){indices, term, length};
 }
-// Group the min terms into groups of implicants according to number of ones
+/* Group the terms into groups of implicants according to number of ones */
 Implicant **group_terms(TruthTable truth_table, short *n_groups, short **n_imps_in_group, char exp_type)
 {
     Implicant **groups = (Implicant **)malloc(sizeof(Implicant *));
@@ -323,7 +327,7 @@ Implicant **group_terms(TruthTable truth_table, short *n_groups, short **n_imps_
     }
     return groups;
 }
-// Count the ones in a term
+/* Count the ones in a term */
 short count_ones(char *bits)
 {
     short n_ones = 0;
@@ -332,7 +336,7 @@ short count_ones(char *bits)
             n_ones++;
     return n_ones;
 }
-//
+/* Recursively group prime implicants */
 Implicant *set_prime_implicants(Implicant **last_level, Implicant **prime_implicants, short n_group, short *n_imps_in_g, short *prime_count)
 {
     Implicant **new_level = (Implicant **)malloc(sizeof(Implicant *));
@@ -415,6 +419,7 @@ Implicant *set_prime_implicants(Implicant **last_level, Implicant **prime_implic
         set_prime_implicants(new_level, prime_implicants, groups_count, n_in_groups, prime_count);
     return *prime_implicants;
 }
+/* Gets the essential prime implicants from the prime implicants */
 Implicant *get_essential_prime_implicants(Implicant *prime_imps, TruthTable truth_table, short prime_count, short *es_prime_count, char exp_type)
 {
     Implicant *es_prime_implicants = (Implicant *)malloc(sizeof(Implicant));
@@ -466,6 +471,7 @@ Implicant *get_essential_prime_implicants(Implicant *prime_imps, TruthTable trut
     }
     return es_prime_implicants;
 }
+/* Executes the Quine-McCluskey Algorithm on a truth table */
 void QuineMcClusky_method(TruthTable truth_table, char exp_type)
 {
     short n_groups = 0, *n_mins_in_g, prime_count = 0, es_prime_count = 0;
@@ -488,6 +494,7 @@ void QuineMcClusky_method(TruthTable truth_table, char exp_type)
     }
     printf("\n");
 }
+/* Prints the content of an Implicant */
 void print_imp(Implicant imp)
 {
     printf("Implicant:\n%s\n", imp.term);
@@ -496,6 +503,7 @@ void print_imp(Implicant imp)
 
     printf("\n\n");
 }
+/* Prints the alphabit representation of bits */
 void alphabit_term_print(char *term, char exp_type)
 {
     if (exp_type == '1')
@@ -509,7 +517,7 @@ void alphabit_term_print(char *term, char exp_type)
     else if (exp_type == '0')
     {
         printf("(");
-        for (short i = 0; i < g_n_bits; i++)
+        for (short i = 0, plus = 0; i < g_n_bits; i++, plus = 0)
         {
             if (term[i] == '0')
             {
@@ -519,9 +527,16 @@ void alphabit_term_print(char *term, char exp_type)
             {
                 printf("%c`%c", 'A' + i);
             }
-            if (i != g_n_bits - 1 && term[i] != '_')
-                if (term[i + 1] != '_')
+            if (term[i] != '_')
+            {
+                for (short j = i + 1; j < g_n_bits; j++)
+                {
+                    if (term[j] != '_')
+                        plus = 1;
+                }
+                if (plus == 1)
                     printf("+");
+            }
         }
         printf(")");
     }
